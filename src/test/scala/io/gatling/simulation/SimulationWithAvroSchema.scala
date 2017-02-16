@@ -398,5 +398,6 @@ class SimulationWithAvroSchema extends Simulation {
   val scn = scenario("Kafka Producer Call").exec(KafkaProducerBuilder[String, GenericRecord](Some(schema)))
 
   // constantUsersPerSec(100000) during (1 minute)
-  setUp(scn.inject(constantUsersPerSec(100000) during (60 seconds))).protocols(kafkaProducerProtocol)
+  // apple macbook pro can do ~30000/second
+  setUp(scn.inject(constantUsersPerSec(10000) during (60 seconds))).protocols(kafkaProducerProtocol)
 }

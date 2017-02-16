@@ -25,44 +25,33 @@ class RandomDataGenerator[K: Manifest, V: Manifest] {
   private final val GenericRecordManifest = manifest[GenericRecord]
   private final val genericData = new GenericData();
   def generateKey(schema: Option[Schema] = None): K = {
-    manifest[K] match {
-      case ByteManifest => 42.toByte.asInstanceOf[K]
-      case ShortManifest => 42.toShort.asInstanceOf[K]
-      case IntManifest => 42.asInstanceOf[K]
-      case LongManifest => 42.toLong.asInstanceOf[K]
-      case FloatManifest => 42.11.toFloat.asInstanceOf[K]
-      case DoubleManifest => 42.11.asInstanceOf[K]
-      case CharManifest => 'C'.asInstanceOf[K]
-      case StringManifest => "Str".asInstanceOf[K]
-      case BooleanManifest => true.asInstanceOf[K]
-      case ByteArrayManifest => "Str".getBytes.asInstanceOf[K]
-      case AnyManifest => 'C'.asInstanceOf[K]
-      case AnyRefManifest => "Str".asInstanceOf[K]
-      case GenericRecordManifest => generateDataForAvroSchema(schema).asInstanceOf[K]
-      case x if x.runtimeClass.isArray =>
-        Array(1, 2, 3, 4, 5).asInstanceOf[K]
-    }
+    genByManifest[K](schema)
   }
 
   def generateValue(schema: Option[Schema] = None): V = {
-    manifest[V] match {
-      case ByteManifest => 42.toByte.asInstanceOf[V]
-      case ShortManifest => 42.toShort.asInstanceOf[V]
-      case IntManifest => 42.asInstanceOf[V]
-      case LongManifest => 42.toLong.asInstanceOf[V]
-      case FloatManifest => 42.11.toFloat.asInstanceOf[V]
-      case DoubleManifest => 42.11.asInstanceOf[V]
-      case CharManifest => 'C'.asInstanceOf[V]
-      case StringManifest => "Str".asInstanceOf[V]
-      case BooleanManifest => true.asInstanceOf[V]
-      case ByteArrayManifest => "Str".getBytes.asInstanceOf[V]
-      case AnyManifest => 'C'.asInstanceOf[V]
-      case AnyRefManifest => "Str".asInstanceOf[V]
-      case GenericRecordManifest => generateDataForAvroSchema(schema).asInstanceOf[V]
+    genByManifest[V](schema)
+  }
+
+  protected def genByManifest[Z:Manifest](schema: Option[Schema])= {
+    manifest[Z] match {
+      case ByteManifest => 42.toByte.asInstanceOf[Z]
+      case ShortManifest => 42.toShort.asInstanceOf[Z]
+      case IntManifest => 42.asInstanceOf[Z]
+      case LongManifest => 42.toLong.asInstanceOf[Z]
+      case FloatManifest => 42.11.toFloat.asInstanceOf[Z]
+      case DoubleManifest => 42.11.asInstanceOf[Z]
+      case CharManifest => 'C'.asInstanceOf[Z]
+      case StringManifest => "Str".asInstanceOf[Z]
+      case BooleanManifest => true.asInstanceOf[Z]
+      case ByteArrayManifest => "Str".getBytes.asInstanceOf[Z]
+      case AnyManifest => 'C'.asInstanceOf[Z]
+      case AnyRefManifest => "Str".asInstanceOf[Z]
+      case GenericRecordManifest => generateDataForAvroSchema(schema).asInstanceOf[Z]
       case x if x.runtimeClass.isArray =>
-        Array(1, 2, 3, 4, 5).asInstanceOf[V]
+        Array(1, 2, 3, 4, 5).asInstanceOf[Z]
     }
   }
+
 
   protected def generateDataForAvroSchema(schemaOpt: Option[Schema]): Any = {
     schemaOpt match {
@@ -89,7 +78,7 @@ class RandomDataGenerator[K: Manifest, V: Manifest] {
             avroRecord
           }
           case Type.ARRAY => Array.range(0,3).map(_ => generateDataForAvroSchema(Some(schema.getElementType))).toList.asJava
-          case Type.MAP => Array.range(0,3).zipWithIndex.map(tuple => (tuple._1.toString(), generateDataForAvroSchema(Some(schema.getValueType())))).toMap.asJava
+          case Type.MAP => Array.range(0,3).zipWithIndex.map(tuple => (tuple._1.toString(), generateDataForAvroSchema(Some(schema.getValueType())))).toMap.asJava // maps must have a string as the key
           case Type.UNION => generateDataForAvroSchema(schema.getTypes.asScala.filter(s => s.getType() != Type.NULL).headOption) // return first non null type
         }
     }
