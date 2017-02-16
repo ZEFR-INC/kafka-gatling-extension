@@ -1,9 +1,13 @@
 package io.gatling.data.generator
 
+import java.nio.ByteBuffer
+
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Type
 import org.apache.avro.generic.GenericData.Record
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.{GenericData, GenericEnumSymbol, GenericRecord}
+
+import scala.collection.JavaConverters._
 
 class RandomDataGenerator[K: Manifest, V: Manifest] {
   private final val ByteManifest = manifest[Byte]
@@ -19,7 +23,7 @@ class RandomDataGenerator[K: Manifest, V: Manifest] {
   private final val AnyManifest = manifest[Any]
   private final val AnyRefManifest = manifest[AnyRef]
   private final val GenericRecordManifest = manifest[GenericRecord]
-
+  private final val genericData = new GenericData();
   def generateKey(schema: Option[Schema] = None): K = {
     manifest[K] match {
       case ByteManifest => 42.toByte.asInstanceOf[K]
@@ -60,29 +64,34 @@ class RandomDataGenerator[K: Manifest, V: Manifest] {
     }
   }
 
-  protected def generateDataForAvroSchema(schema: Option[Schema]): GenericRecord = {
-    if (schema.isEmpty) {
-      throw new RuntimeException("schema is empty. Cannot generate record")
+  protected def generateDataForAvroSchema(schemaOpt: Option[Schema]): Any = {
+    schemaOpt match {
+      case None => throw new RuntimeException("schema is empty. Cannot generate record")
+      case Some(schema) =>
+        val fieldType = schema.getType
+        fieldType match {
+          case Type.NULL => null
+          case Type.BOOLEAN => true
+          case Type.ENUM => genericData.createEnum(schema.getEnumSymbols.get(0), schema)
+          case Type.INT => 42
+          case Type.LONG => 42.toLong
+          case Type.FLOAT => 42.11.toFloat
+          case Type.DOUBLE => 42.11
+          case Type.FIXED => new GenericData.Fixed(schema, Array.range(0, schema.getFixedSize).map(_.toByte) )
+          case Type.STRING => "42"
+          case Type.BYTES => ByteBuffer.wrap("42".getBytes)
+          case Type.RECORD => {
+            val avroRecord = new Record(schema)
+            schema.getFields.asScala.foreach(
+              field => {
+                avroRecord.put(field.name(), generateDataForAvroSchema(Some(field.schema())))
+              })
+            avroRecord
+          }
+          case Type.ARRAY => Array.range(0,3).map(_ => generateDataForAvroSchema(Some(schema.getElementType))).toList.asJava
+          case Type.MAP => Array.range(0,3).zipWithIndex.map(tuple => (tuple._1.toString(), generateDataForAvroSchema(Some(schema.getValueType())))).toMap.asJava
+          case Type.UNION => generateDataForAvroSchema(schema.getTypes.asScala.filter(s => s.getType() != Type.NULL).headOption) // return first non null type
+        }
     }
-
-    val length = schema.get.getFields.size()
-
-    val avroRecord = new Record(schema.get)
-    for (i <- 0 until length) {
-      val field = schema.get.getFields.get(i)
-      val fieldType = field.schema().getType
-
-      fieldType match {
-        case Type.BYTES => avroRecord.put(i, 42.toByte)
-        case Type.INT => avroRecord.put(i, 42)
-        case Type.LONG => avroRecord.put(i, 42.toLong)
-        case Type.FLOAT => avroRecord.put(i, 42.11.toFloat)
-        case Type.DOUBLE => avroRecord.put(i, 42.11)
-        case Type.STRING => avroRecord.put(i, "Str")
-        case Type.BOOLEAN => avroRecord.put(i, true)
-        case Type.RECORD => avroRecord.put(i, generateDataForAvroSchema(schema))
-      }
-    }
-    avroRecord
   }
 }
