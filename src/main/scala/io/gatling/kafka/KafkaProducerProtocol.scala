@@ -13,7 +13,7 @@ class KafkaProducerProtocol[K: Manifest, V: Manifest](props: java.util.HashMap[S
                                   dataGenerator: RandomDataGenerator[K, V] = null)
   extends Protocol {
   private final val kafkaProducer = new KafkaProducer[K, V](props)
-
+  println(s"Created kafkaProducer with $props")
   private var key: K = _
   private var value: V = _
 
@@ -23,23 +23,19 @@ class KafkaProducerProtocol[K: Manifest, V: Manifest](props: java.util.HashMap[S
 
     if (attributes.nonEmpty) {
       if (manifest[K].runtimeClass.isArray &&
-          manifest[V].runtimeClass.isArray) {
+        manifest[V].runtimeClass.isArray) {
         key = attributes.toString().getBytes().asInstanceOf[K]
         value = attributes.toString().getBytes().asInstanceOf[V]
       } else {
         key = createRecordForAvroSchema(attributes).asInstanceOf[K]
         value = createRecordForAvroSchema(attributes).asInstanceOf[V]
       }
-    } else if (schema.nonEmpty) {
-      key = dataGenerator.generateKey(schema)
-      value = dataGenerator.generateValue(schema)
     } else {
-      key = dataGenerator.generateKey()
-      value = dataGenerator.generateValue()
+        key = dataGenerator.generateKey(schema)
+        value = dataGenerator.generateValue(schema)
     }
-
     val record = new ProducerRecord[K, V](topics, key, value)
-    kafkaProducer.send(record)
+    val result = kafkaProducer.send(record)
   }
 
   private def createRecordForAvroSchema(attributes: Map[String, Any]): GenericRecord = {
